@@ -1,0 +1,77 @@
+<launch>
+  <arg name="input_info"
+       value="/kinect_head_c2/rgb_quater/camera_info" />
+  <!-- <arg name="input_info" -->
+  <!--      value="/kinect_head_c2/rgb/camera_info" /> -->
+  <arg name="input_points"
+       value="/kinect_head_c2/depth_registered/quater/points" />
+  <arg name="input_image"
+       value="/kinect_head_c2/rgb/image_rect_color" />
+  <node name="tableclothmanager" pkg="nodelet" type="nodelet" args="manager" />
+  <node name="attention_clipper" pkg="nodelet" type="nodelet"
+        args="load jsk_pcl/AttentionClipper tableclothmanager"
+        output="screen">
+    <remap from="~input" to="$(arg input_info)" />
+    <remap from="~input/points" to="$(arg input_points)" />
+    <remap from="~input/box_array" to="/tablecloth_bb" />
+    <param name="use_multiple_attention" value="true" />
+  </node>
+  <node name="extract_indices" pkg="nodelet" type="nodelet"
+        args="load jsk_pcl/ExtractIndices tableclothmanager">
+    <remap from="~input" to="$(arg input_points)" />
+    <remap from="~indices" to="/attention_clipper/output/point_indices" />
+  </node>
+  <node name="resize_points_publisher" pkg="nodelet" type="nodelet"
+        args="load jsk_pcl/ResizePointsPublisher tableclothmanager">
+    <remap from="~input" to="/extract_indices/output" />
+    <param name="step_x" value="4" />
+    <param name="step_y" value="4" />
+  </node>
+  <node name="euclidean_clustering" pkg="nodelet" type="nodelet"
+        args="load jsk_pcl/EuclideanClustering tableclothmanager">
+    <remap from="~input" to="/resize_points_publisher/output" />
+    <rosparam subst_value="true">
+      tolerance: 0.07
+      min_size: 500
+      max_size: 25000
+    </rosparam>
+  </node>
+  <!-- tolerance: 0.07 -->
+
+  <node name="cluster_point_indices_decomposer" pkg="nodelet" type="nodelet"
+        args="load jsk_pcl/ClusterPointIndicesDecomposer tableclothmanager">
+    <remap from="~input" to="/resize_points_publisher/output" />
+    <remap from="~target" to="/euclidean_clustering/output" />
+    <remap from="~boxes" to="/tablecloth_bb_fixed" />
+    <!-- <remap from="~align_planes" to="/boundingbox_to_polygon_array/output" /> -->
+    <!-- <remap from="~align_planes" -->
+    <!--        to="/organized_multi_plane_segmentation/output_polygon" /> -->
+    <!-- <remap from="~align_planes" -->
+    <!--        to="/region_growing_multiple_place_segmentation/output/polygons" /> -->
+    <rosparam subst_value="true">
+      approximate_sync: false
+      queue_size: 500
+      align_boxes: true
+      align_boxes_with_plane: false
+      target_frame_id: "/tablecloth_boundingbox"
+    </rosparam>
+  </node>
+
+  <node name="boundingbox_region_attention_clipper" pkg="nodelet" type="nodelet"
+        args="load jsk_pcl/AttentionClipper tableclothmanager"
+        output="screen">
+    <remap from="~input" to="$(arg input_info)" />
+    <remap from="~input/points" to="$(arg input_points)" />
+    <remap from="~input/box_array" to="/tablecloth_bb_fixed" />
+    <param name="use_multiple_attention" value="true" />
+  </node>
+  <node name="boundingbox_region_extract_indices" pkg="nodelet" type="nodelet"
+        args="load jsk_pcl/ExtractIndices tableclothmanager">
+    <remap from="~input" to="$(arg input_points)" />
+    <remap from="~indices" to="/boundingbox_region_attention_clipper/output/point_indices" />
+  </node>
+  <include file="transform_to_footprint_frame.launch">
+    <arg name="manager" value="tableclothmanager" />
+    <arg name="input_points" value="/boundingbox_region_extract_indices/output" />
+  </include>
+</launch>

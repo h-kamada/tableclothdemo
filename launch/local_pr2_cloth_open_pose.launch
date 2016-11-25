@@ -1,0 +1,6 @@
+<launch>
+  <include file="$(find tableclothdemo)/launch/rviz.launch" />
+  <param name="/use_sim_time" value="true" />
+  <!-- <node pkg="rosbag" type="play" name="rosbag" args="/home/h-kamada/rosbag/pr2-tablecloth-openpose.bag" /> -->
+  <!-- <node pkg="tableclothdemo" type="get-pr1012-hands-coords.py" name="get_handscoords" /> -->
+</launch>

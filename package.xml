@@ -1,0 +1,16 @@
+<package>
+  <name>tableclothdemo</name>
+  <version>0.0.1</version>
+
+  <description>
+    tableclothdemo
+  </description>
+  <author email="h-kamada@jsk.imi.i.u-tokyo.ac.jp">Kamada</author>
+  <maintainer email="h-kamada@jsk.imi.i.u-tokyo.ac.jp">Kamada</maintainer>
+
+  <license>MIT</license>
+
+  <buildtool_depend>catkin</buildtool_depend>
+
+  <run_depend>roseus</run_depend>
+</package>

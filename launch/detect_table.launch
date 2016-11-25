@@ -1,0 +1,59 @@
+<launch>
+  <!-- publish boundingbox that is around the table -->
+  <node pkg="tableclothdemo" name="pub_boundingbox_for_scan" type="pub_boundingbox_for_scan.py" />
+
+  <!-- extract foot object from laserscan and publish pointcloud2 of /cloud_filtered-->
+  <node pkg="laser_filters" type="scan_to_cloud_filter_chain" output="screen" name="extract_footobject">
+    <remap from="scan" to="base_scan" />
+    <rosparam command="load" file="$(find tableclothdemo)/config/extract_footobject.yaml" />
+    <param name="target_frame" value="base_laser_link" />
+  </node>
+
+  <!-- clip /cloud_filtered and publish /clipped_scan -->
+  <node pkg="nodelet" type="nodelet" name="table_manager" args="manager" />
+  <node name="pointcloud_xyz_to_xyzrgb"
+        pkg="nodelet" type="nodelet"
+        args="standalone jsk_pcl_utils/PointCloudXYZToXYZRGB table_manager">
+    <remap from="~input" to="/cloud_filtered" />
+  </node>
+  <node name="attention_clipper"
+        pkg="nodelet" type="nodelet"
+        args="standalone jsk_pcl/AttentionClipper table_manager">
+    <remap from="~input/points" to="pointcloud_xyz_to_xyzrgb/output" />
+    <remap from="~input/box_array" to="/pub_boundingbox_for_scan/box" />
+    <rosparam>
+      use_multiple_attention: true
+    </rosparam>
+  </node>
+  <node name="cluster_indices_decomposer"
+        pkg="nodelet" type="nodelet"
+        args="load jsk_pcl/ClusterPointIndicesDecomposer table_manager">
+    <remap from="~input" to="/pointcloud_xyz_to_xyzrgb/output" />
+    <remap from="~target" to="/attention_clipper/output/cluster_point_indices" />
+  </node>
+  <node name="pointcloud_to_laserscan" pkg="nodelet" type="nodelet"
+        args="load pointcloud_to_laserscan/pointcloud_to_laserscan_nodelet table_manager">
+    <remap from="cloud_in" to="/cluster_indices_decomposer/debug_output" />
+    <remap from="scan" to="/clipped_scan" />
+    <rosparam>
+      angle_min: -2.26892805099
+      angle_max: 2.26456475258
+      angle_increment: 0.00436332309619
+      scan_time: 0.05
+      range_min: 0.023
+      range_max: 60.0
+      use_inf: false
+    </rosparam>
+  </node>
+
+  <!-- subscribe /clipped_scan and publish /table_marker_array -->
+  <env name="PATH" value="$(env PATH):$(find roseus)/bin" />
+  <node name="detect_table"
+        pkg="tableclothdemo"
+        type="table-detecter.l"
+        output="screen"
+        respawn="true"/>
+
+  <!-- subscribe /table_marker_array and publish /table_static -->
+  <node pkg="tableclothdemo" name="table_to_static" type="table_to_static.py" />
+</launch>

@@ -1,0 +1,68 @@
+
+
+## In PR1012
+roslaunch checkerboard_pub.launch
+
+## On local PC
+pr1012
+roslaunch checkerboard_sub.launch
+
+pr1012
+roseus demo.l
+
+============================================
+## pr1012 tablecloth-open-pose
+<rosbag ver>
+rosbag play ~/rosbag/pr2-tablecloth-openpose.bag
+roslaunch tableclothdemo local_pr2_cloth_open_pose.launch
+roseus demo.l
+
+================================
+
+pr1012
+publish boundingbox frame /map
+
+pr1040
+subscribe boundingbox
+
+===============================
+## pr1012 grab-side & pr1012 dummy-grab-otherside
+
+#grab side
+pr1012
+roseus grab-side.l
+
+# dummyside
+pr1012
+roseus dummy-grab-otherside.l
+(dummy-move)
+;; /hogeという名のPoseArrayがpublishされる
+
+#viewer
+pr1012
+roslaunch tableclothdemo rviz.launch
+
+====================================
+
+## tablecloth detecter
+ipython attention_pose_set.py
+
+roslaunch tablecloth_detector.launch
+
+===================================
+## demo
+. tableclothdemo_rocon_sample.sh
+/mapに対しての位置を調節
+pr1040体内で
+roslaunch cloth_detecter.launch
+pr1012体内で
+
+
+
+
+
+
+
+
+
+

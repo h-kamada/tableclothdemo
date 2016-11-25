@@ -1,0 +1,46 @@
+<launch>
+  <arg name="pr1012" default="true" />
+  <arg name="grabside" default="true" />
+
+  <!-- rocon and load config file -->
+  <group if="$(arg pr1012)">
+    <include file="$(find jsk_pr2_startup)/jsk_pr2_rocon/pr2s_rocon_common/pr1012_rocon.launch">
+      <arg if="$(arg grabside)" name="config_path" value="$(find tableclothdemo)/config/pr1012_grabside_config.yaml" />
+      <arg unless="$(arg grabside)" name="config_path" value="$(find tableclothdemo)/config/pr1012_otherside_config.yaml" />
+    </include>
+  </group>
+  <group unless="$(arg pr1012)">
+    <include file="$(find jsk_pr2_startup)/jsk_pr2_rocon/pr2s_rocon_common/pr1040_rocon.launch">
+      <arg if="$(arg grabside)" name="config_path" value="$(find tableclothdemo)/config/pr1040_grabside_config.yaml" />
+      <arg unless="$(arg grabside)" name="config_path" value="$(find tableclothdemo)/config/pr1040_otherside_config.yaml" />
+    </include>
+  </group>
+
+  <!-- grab side rocon communication -->
+  <group if="$(arg grabside)">
+    <node pkg="roseus" type="roseus" name="dummy_pub"
+          args="$(find tableclothdemo)/euslisp/grab-side-keep-pubbing.l"/>
+    <!-- <node pkg="tableclothdemo" type="simple-bb-sub.py" name="bb_pub" /> -->
+    <node pkg="topic_tools" type="relay" name="bb_republisher"
+          args="/raw_tablecloth_bb /bb_repub" />
+    <node pkg="topic_tools" type="relay" name="move_to_table_republisher"
+          args="/move_to_table/where /rocon/move_to_table/where" />
+  </group>
+  <!-- otherside rocon communication -->
+  <group unless="$(arg grabside)">
+    <node pkg="topic_tools" type="relay" name="bb_republisher"
+          args="/bb_repub /raw_tablecloth_bb" />
+    <node pkg="topic_tools" type="relay" name="move_to_table_republisher"
+          args="/rocon/move_to_table/where /move_to_table/where" />
+  </group>
+
+  <!-- for searching tablecloth -->
+  <node pkg="tableclothdemo" name="raw_boundingbox_to_margined_boundingbox"
+        type="raw_boundingbox_to_margined_boundingbox.py" />
+  <node pkg="tableclothdemo" name="boundingbox_to_transform_stamped"
+        type="boundingbox_to_transform_stamped.py" />
+  <node pkg="tableclothdemo" name="search_four_corners" type="search-four-corners.py" />
+
+  <!-- for searching table -->
+  <include file="$(find tableclothdemo)/launch/detect_table.launch" />
+</launch>

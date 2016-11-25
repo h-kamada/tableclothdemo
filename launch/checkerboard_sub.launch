@@ -1,0 +1,3 @@
+<launch>
+  <node pkg="tableclothdemo" type="subscribe-checker.py" name="sub_checkerboard" />
+</launch>

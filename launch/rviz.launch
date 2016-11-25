@@ -1,0 +1,5 @@
+<launch>
+  <param name="robot_description" command="$(find xacro)/xacro.py '$(find pr2_description)/robots/pr2.urdf.xacro'" />
+  <node pkg="rviz" type="rviz" name="rviz"
+        args="-d $(find tableclothdemo)/config/pr2_rviz.rviz" respawn="false" />
+</launch>

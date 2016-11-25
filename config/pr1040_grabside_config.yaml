@@ -1,0 +1,10 @@
+# pr1040 grabside
+default_pulls:
+  - gateway: jsk_pr1012_.*
+default_advertisements:
+  - name: /bb_repub
+    node: None
+    type: publisher
+  - name: /rocon/move_to_table/where
+    node: None
+    type: publisher

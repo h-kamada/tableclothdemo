@@ -1,0 +1,14 @@
+<launch>
+  <arg name="manager" default="tmp_manager" />
+  <arg name="input_points" default="/kinect_head_c2/depth_registered/quater/points" />
+
+  <node name="tmp_manager" pkg="nodelet" type="nodelet" args="manager"/>
+  <node name="transformer" pkg="nodelet" type="nodelet"
+        args="load jsk_pcl_utils/TfTransformCloud $(arg manager)">
+    <remap from="~input" to="$(arg input_points)" />
+    <remap from="~output" to="/transformed_points" />
+    <rosparam subst_value="true">
+      target_frame_id: "/base_footprint"
+    </rosparam>
+  </node>
+</launch>

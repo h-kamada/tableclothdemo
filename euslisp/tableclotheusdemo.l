@@ -1,0 +1,410 @@
+
+
+(require "package://pr2eus/pr2-interface.l")
+(unless (boundp `*1pr2*) (setq *1pr2* (instance pr2-robot :init)))
+(unless (boundp `*2pr2*) (setq *2pr2* (instance pr2-robot :init)))
+
+(require "models/room73b2-scene.l")
+(room73b2)
+
+(require "models/arrow-1000-object")
+
+(setq *tablecloth* (make-cube 1200 1800 10))
+(send *tablecloth* :move-to (send *room73b2* :spot "table-spot") :world)
+(send *tablecloth* :translate (float-vector -1000 -2000 700))
+(send *tablecloth* :rotate (deg2rad 90) :y)
+(setq *a* (arrow-1000))
+(objects (list *1pr2* *2pr2* *room73b2* *tablecloth* *a*))
+
+(defun layout-setting ()
+  (send (send *room73b2* :object "room73b2-trashbox0") :locate #f(800 -1250 0) :world)
+  )
+
+(defun remove-object ()
+  ;; ooooo
+  (send (send *room73b2* :object "room73b2-askul-1200x700-desk-7") :locate #f(10000 0 -2000) :world)
+  (send (send *room73b2* :object "room73b2-askul-1000x700-desk") :locate #f(10000 0 -2000) :world)
+  (send (send *room73b2* :object "room73b2-cupboard-right") :locate #f(10000 0 -2000) :world)
+  (send (send *room73b2* :object "room73b2-cupboard-left") :locate #f(10000 0 -2000) :world)
+  (send (send *room73b2* :object "room73b2-toshiba-clacio-refrigerator") :locate #f(10000 0 -2000) :world)
+  (send (send *room73b2* :object "room73b2-coe-800-shelf") :locate #f(10000 0 -2000) :world)
+  (send (send *room73b2* :object "room73b2-coe-450-shelf") :locate #f(10000 0 -2000) :world)
+  (send (send *room73b2* :object "room73b2-chair0") :locate #f(10000 0 -2000) :world)
+  (send (send *room73b2* :object "room73b2-chair1") :locate #f(10000 0 -2000) :world)
+  (send (send *room73b2* :object "room73b2-bottle") :locate #f(10000 0 -2000) :world)
+  (send (send *room73b2* :object "room73b2-empty-box") :locate #f(10000 0 -2000) :world)
+  (send (send *room73b2* :object "room73b2-sushi-cup2") :locate #f(10000 0 -2000) :world)
+  ;; multiple
+  ;; (send (send *room73b2* :object "room73b2-uchida-shelf-1100") :locate #f(10000 0 -2000) :world)
+  ;; (send (send *room73b2* :object "room73b2-uchida-shelf-1300") :locate #f(10000 0 -2000) :world)
+  )
+
+(defun search-object (min-x max-x min-y max-y)
+  (let (x y res)
+    (dolist (obj (send *room73b2* :objects))
+      (setq x (elt (send obj :worldpos) 0))
+      (setq y (elt (send obj :worldpos) 1))
+      (when (and (and (< min-x x) (< x max-x))
+                 (and (< min-y y) (< y max-y)))
+        (setq res (append res (list (send obj :name))))
+        ))
+    res
+    ))
+;; (search-object 1500 6000 3000 100000)
+(layout-setting)
+(remove-object)
+
+(defun set-view ()
+  ;; (send *irtviewer* :viewer :viewing :look #f(3000 10000 16000) #f(3000 1000 0))
+  ;; (send *irtviewer* :viewer :viewing :look #f(3000 15000 14000) #f(3000 500 0))
+  (send *irtviewer* :viewer :viewing :look #f(3000 22000 20000) #f(3000 500 0))
+  (send *irtviewer* :draw-objects)
+  )
+(set-view)
+
+
+(setq *span* 1)
+(defun dr ()
+  (send *irtviewer* :draw-objects)
+  (case *span*
+    (0
+     (unix:usleep 10000))
+    (t
+     (unix:usleep (* 100000 *span*))
+     )))
+
+(defun pick (obj &key (robot *1pr2*) (arm :rarm) (move-pos (float-vector 0 0 0))
+                 (move-rot-angle 0) (move-rot-axis :z) (reset-pose t) (draw t)
+                 (back t) (stop nil))
+  (let ((default-arm-pos (float-vector 200 0 0))
+        )
+    (when reset-pose
+      (send robot :reset-pose))
+    (send robot :stop-grasp arm)
+    ;; (when draw (dr))
+    (send robot :inverse-kinematics
+        (send
+         (make-coords
+          :pos (send (send robot arm :end-coords) :worldpos)
+          :rot (send robot :rot))
+         :translate default-arm-pos :local)
+        :use-torso t :move-arm arm :rotation-axis t)
+    ;; (when draw (dr))
+    (send robot arm :move-end-pos move-pos :local)
+    (send robot arm :move-end-rot move-rot-angle move-rot-axis :local)
+    (when draw (dr))
+    (when stop
+      (return-from pick nil)
+      )
+    ;; (send (send obj :parent) :dissoc obj)
+    (cond
+     (obj
+      (send robot :start-grasp arm obj)
+      )
+     (t
+      (send robot :start-grasp arm)
+      ))
+    (when draw (dr))
+    (unless back
+      (return-from pick nil))
+    (send robot arm :move-end-pos (float-vector -50 0 10) :local)
+    (when draw (dr))
+    (send robot :translate (float-vector -200 0 0) :local)
+    (when draw (dr))
+    (send robot :reset-pose)
+    (when draw (dr))
+    ))
+
+(defun place (&optional obj &key (robot *1pr2*) (arm :rarm) (move-pos (float-vector 0 0 0))
+                        (move-rot-angle 0) (move-rot-axis :z) (reset-pose t) (stop nil))
+  (let ((default-arm-pos (float-vector 200 0 0))
+        )
+    (when reset-pose
+      (send robot :reset-pose))
+    (send robot :inverse-kinematics
+        (send
+         (make-coords
+          :pos (send (send robot arm :end-coords) :worldpos)
+          :rot (send robot :rot))
+         :translate default-arm-pos :local)
+        :use-torso t :move-arm arm :rotation-axis t)
+    ;; (dr)
+    (send robot arm :move-end-pos move-pos :local)
+    (send robot arm :move-end-rot move-rot-angle move-rot-axis :local)
+    (dr)
+    (when stop
+      (return-from place nil)
+      )
+    (send robot :stop-grasp arm obj)
+    (dr)
+    (send robot arm :move-end-pos (float-vector -50 0 10) :local)
+    (dr)
+    (send robot :translate (float-vector -200 0 0) :local)
+    (dr)
+    (send robot :reset-pose)
+    (dr)
+    ))
+
+(defun move-arm-pos (&key (robot *1pr2*) (arm :rarm) (move-pos (float-vector 0 0 0))
+                          (move-rot-angle 0) (move-rot-axis :z) (reset-pose))
+  (let ((default-arm-pos (float-vector 200 0 0))
+        )
+    (when reset-pose
+      (send robot :reset-pose))
+    (send robot :inverse-kinematics
+        (send
+         (make-coords
+          :pos (send (send robot arm :end-coords) :worldpos)
+          :rot (send robot :rot))
+         :translate default-arm-pos :local)
+        :use-torso t :move-arm arm :rotation-axis t)
+    (send robot arm :move-end-pos move-pos :local)
+    (send robot arm :move-end-rot move-rot-angle move-rot-axis :local)
+    (dr)
+    ))
+
+(defun move-to (&key (robot *1pr2*) (pos (float-vector 0 0 0)) (deg 0))
+  (send robot :locate pos :world)
+  (send robot :orient 0 :z :world)
+  (send robot :rotate (deg2rad deg) :z :world)
+  (dr)
+  )
+
+(defun remove-bottle-from-table (&key (robot *1pr2*))
+  (move-to :robot robot :pos (float-vector 3150 950 0) :deg 90)
+  (dr)
+  (pick (send *room73b2* :object "room73b2-bottle") :robot robot :arm :larm :move-pos (float-vector 100 100 0))
+  (move-to :robot robot :pos (float-vector 2050 450 0) :deg 90)
+  (dr)
+  (place (send *room73b2* :object "room73b2-bottle") :robot robot :arm :larm :move-pos (float-vector 500 0 150) :stop nil)
+  (dr)
+  )
+
+(defun remove-chair0 (&key (robot *1pr2*))
+  (move-to :robot robot :pos (float-vector 4300 1500 0) :deg 180)
+  (dr)
+  (pick (send *room73b2* :object "room73b2-chair0") :robot robot :arm :rarm :move-pos (float-vector 100 100 0) :back nil :stop nil)
+  (dr)
+  (move-to :robot robot :pos (float-vector 4800 1500 0) :deg 180)
+  (dr)
+  (move-to :robot robot :pos (float-vector 4800 1500 0) :deg 90)
+  (dr)
+  (place (send *room73b2* :object "room73b2-chair0") :robot robot :arm :rarm :move-pos (float-vector 500 0 0) :stop nil)
+  (dr)
+  )
+
+(defun remove-cart (&key (robot *1pr2*))
+  (move-to :robot robot :pos (float-vector 2800 -100 0) :deg 270)
+  (dr)
+  (pick (send *room73b2* :object "room73b2-gifuplastic-900-cart") :robot robot :arm :rarm :move-pos (float-vector 240 100 120) :move-rot-angle 90 :move-rot-axis :x :back nil :stop nil)
+  (dr)
+  (move-to :robot robot :pos (float-vector 5000 -1500 0) :deg 0)
+  (dr)
+  (place (send *room73b2* :object "room73b2-gifuplastic-900-cart") :robot robot :arm :rarm :move-pos (float-vector 500 0 0) :move-rot-angle 90 :move-rot-axis :x :stop nil)
+  (dr)
+  )
+
+
+(defun move-sushi-cup-to-kitchen-table (&key (robot *1pr2*))
+  (move-to :robot robot :pos (float-vector 3700 1700 0) :deg 180)
+  (dr)
+  (pick (send *room73b2* :object "room73b2-sushi-cup2") :robot robot :arm :rarm :move-pos (float-vector 480 80 0) :back t :stop nil)
+  (dr)
+  (move-to :robot robot :pos (float-vector 1200 2000 0) :deg 180)
+  (dr)
+  (place (send *room73b2* :object "room73b2-sushi-cup2") :robot robot :arm :rarm :move-pos (float-vector 400 -50 120) :stop nil)
+  (dr)
+  )
+
+(defun throw-away-empty-box (&key (robot *1pr2*))
+  (move-to :robot robot :pos (float-vector 3700 1700 0) :deg 180)
+  (dr)
+  (pick (send *room73b2* :object "room73b2-empty-box") :robot robot :arm :larm :move-pos (float-vector  280 -60 0) :back t :stop nil)
+  (dr)
+  (move-to :robot robot :pos (float-vector 1600 -1000 0) :deg 180)
+  (dr)
+  (place (send *room73b2* :object "room73b2-empty-box") :robot robot :arm :larm :move-pos (float-vector 400 80 -100) :stop nil)
+  (send (send *room73b2* :object "room73b2-empty-box") :translate #f(0 0 -500) :world)
+  (dr)
+  )
+
+(defun reposit-chair0 (&key (robot *1pr2*))
+  (move-to :robot robot :pos (float-vector 4800 1500 0) :deg 90)
+  (dr)
+  (pick (send *room73b2* :object "room73b2-chair0") :robot robot :arm :rarm :move-pos (float-vector 500 0 0) :back nil :stop nil)
+  (dr)
+  (move-to :robot robot :pos (float-vector 4700 1500 0) :deg 180)
+  (dr)
+  (place (send *room73b2* :object "room73b2-chair0") :robot robot :arm :rarm :move-pos (float-vector 500 0 0) :stop nil)
+  (dr)
+  )
+
+(defun clean-table (&optional span &key (robot *1pr2*))
+  (when span (setq *span* span))
+  (remove-bottle-from-table :robot robot)
+  (remove-chair0 :robot robot)
+  (move-sushi-cup-to-kitchen-table :robot robot)
+  (throw-away-empty-box :robot robot)
+  (reposit-chair0 :robot robot)
+  )
+
+(defun grab-tablecloth (&optional span &key (robot *1pr2*))
+  (when span (setq *span* span))
+  (move-to :robot robot :pos (float-vector 4550 600 0) :deg 0)
+  (pick *tablecloth* :robot robot :arm :rarm :move-pos (float-vector 300 170 0) :back nil :stop nil)
+  (move-arm-pos :robot robot :arm :rarm :move-pos (float-vector 300 170 0) :move-rot-angle 90 :move-rot-axis :x)
+  (pick *tablecloth* :robot robot :arm :larm :move-pos (float-vector 300 170 0) :back nil :stop t :reset-pose nil)
+  (move-arm-pos :robot robot :arm :larm :move-pos (float-vector 300 170 0) :move-rot-angle 90 :move-rot-axis :x :reset-pose nil)
+
+  ;; (move-to :robot robot :pos (float-vector 3200 100 0) :deg 90)
+  ;; (place *tablecloth* :robot robot :arm :rarm :move-pos (float-vector 300 170 -70) :move-rot-angle 90 :move-rot-axis :x :stop nil)
+  )
+
+(defun grab-other (&optional span &key (robot *2pr2*))
+  (when span (setq *span* span))
+  (move-to :robot robot :pos (float-vector 7550 600 0) :deg 180)
+  (dr)
+  (pick *tablecloth* :robot robot :arm :rarm :move-pos (float-vector 300 170 0) :back nil :stop t)
+  (move-arm-pos :robot robot :arm :rarm :move-pos (float-vector 300 170 0) :move-rot-angle 90 :move-rot-axis :x)
+  (pick *tablecloth* :robot robot :arm :larm :move-pos (float-vector 300 170 0) :back nil :stop t :reset-pose nil)
+  (move-arm-pos :robot robot :arm :larm :move-pos (float-vector 300 170 0) :move-rot-angle 90 :move-rot-axis :x :reset-pose nil)
+  )
+
+(defun set-tablecloth (&optional span &key (robot *1pr2*))
+  (when span (setq *span* span))
+  (move-to :robot *1pr2* :pos (float-vector 1850 1700 0) :deg 0)
+  (move-to :robot *2pr2* :pos (float-vector 4850 1700 0) :deg 180)
+  (place *tablecloth* :robot *1pr2* :arm :rarm :move-pos (float-vector 0 0 -70) :move-rot-angle 90 :move-rot-axis :x :stop nil)
+  )
+
+(defun move-dish-cup (&optional span &key (robot *1pr2*))
+  (when span (setq *span* span))
+  )
+
+
+(defun open-fridge-door (&optional span &key (robot *1pr2*))
+  (when span (setq *span* span))
+  ;; move-to fridge door front
+  (move-to :robot robot :pos (float-vector 4700 1700 0) :deg 0)
+  (dr)
+  ;; open-fridge-door
+  (pick nil :robot robot :arm :rarm :move-pos (float-vector  340 150 270) :back nil :stop nil)
+  (dr)
+  (pick nil :robot robot :arm :rarm :move-pos (float-vector  100 -300 270) :move-rot-angle 90 :back nil :stop nil :draw nil)
+  (send (send (send *room73b2* :object "room73b2-hitachi-fiesta-refrigerator") :door1) :joint-angle 90)
+  (dr)
+  (send robot :stop-grasp :rarm)
+  (dr)
+  (send robot :reset-pose)
+  (dr)
+  )
+
+(defun grasp-can (&optional span &key (robot *1pr2*))
+  (when span (setq *span* span))
+  ;; move-forward
+  (move-to :robot robot :pos (float-vector 4900 1500 0) :deg 0)
+  (dr)
+  ;; catch-can
+  (pick (send *room73b2* :object "room73b2-georgia-emerald-mountain") :robot robot :arm :larm :move-pos (float-vector 480 -180 380) :stop nil)
+  (dr)
+  )
+
+(defun close-fridge (&optional span &key (robot *1pr2*))
+  ;; close-fridge
+  (move-to :robot robot :pos (float-vector 4700 1700 0) :deg 0)
+  (dr)
+  (pick nil :robot robot :arm :rarm :move-pos (float-vector  100 -300 270) :move-rot-angle 90 :back nil :stop nil :draw nil)
+  (dr)
+  (pick nil :robot robot :arm :rarm :move-pos (float-vector  340 150 270) :back nil :stop nil :draw nil)
+  (send (send (send *room73b2* :object "room73b2-hitachi-fiesta-refrigerator") :door1) :joint-angle 0)
+  (dr)
+  (send robot :reset-pose)
+  (dr)
+  )
+
+(defun put-can-at-table (&optional span &key (robot *1pr2*))
+  ;; place can at the table
+  (move-to :robot robot :pos (float-vector 3150 550 0) :deg 90)
+  (dr)
+  (place (send *room73b2* :object "room73b2-georgia-emerald-mountain") :robot robot :arm :larm :move-pos (float-vector 450 0 0) :stop nil)
+  (dr)
+  )
+
+(defun move-dish-to-table (&optional span &key (robot *1pr2*))
+  (when span (setq *span* span))
+  (move-to :robot *1pr2* :pos (float-vector 1100 3100 0) :deg 180)
+  (dr)
+  (pick (send *room73b2* :object "room73b2-dish") :robot robot :arm :rarm :move-pos (float-vector 280 0 80) :stop nil)
+  (move-to :robot *1pr2* :pos (float-vector 3000 500 0) :deg 90)
+  (dr)
+  (place (send *room73b2* :object "room73b2-dish") :robot robot :arm :rarm :move-pos (float-vector 280 0 0) :stop nil)
+  )
+
+(defun move-mug-cup-to-table (&key (robot *1pr2*))
+  (move-to :robot robot :pos (float-vector 1200 1600 0) :deg 180)
+  (dr)
+  (pick (send *room73b2* :object "room73b2-mug-cup") :robot robot :arm :rarm :move-pos (float-vector 300 20 110) :back t :stop nil)
+  (dr)
+  (move-to :robot robot :pos (float-vector 3000 550 0) :deg 90)
+  (dr)
+  (place (send *room73b2* :object "room73b2-mug-cup") :robot robot :arm :rarm :move-pos (float-vector 400 -50 -10) :stop nil)
+  (dr)
+  )
+
+(defun 1-dish-2-cup ()
+  (move-to :robot *1pr2* :pos (float-vector 1100 3100 0) :deg 180)
+  (dr)
+  (pick (send *room73b2* :object "room73b2-dish") :robot *1pr2* :arm :rarm :move-pos (float-vector 280 0 80) :stop nil)
+  (move-to :robot *1pr2* :pos (float-vector 3000 500 0) :deg 90)
+  (dr)
+
+  (move-to :robot *2pr2* :pos (float-vector 1200 1600 0) :deg 180)
+  (dr)
+  (pick (send *room73b2* :object "room73b2-mug-cup") :robot *2pr2* :arm :rarm :move-pos (float-vector 300 20 110) :back t :stop nil)
+  (dr)
+
+  (place (send *room73b2* :object "room73b2-dish") :robot *1pr2* :arm :rarm :move-pos (float-vector 280 0 0) :stop nil)
+  (move-to :robot *1pr2* :pos (float-vector 5000 550 0) :deg 90)
+
+  (move-to :robot *2pr2* :pos (float-vector 3000 550 0) :deg 90)
+  (dr)
+  (place (send *room73b2* :object "room73b2-mug-cup") :robot *2pr2* :arm :rarm :move-pos (float-vector 400 -50 -10) :stop nil)
+  (dr)
+  )
+
+
+
+(defun fridge-demo (&optional span &key (robot *1pr2*))
+  (open-fridge-door span :robot robot)
+  (grasp-can span :robot robot)
+  (close-fridge span :robot robot)
+  (put-can-at-table span :robot robot)
+  )
+
+
+(defun set-span (arg)
+  (setq *span* arg)
+  )
+
+(defun demo (&optional span &key (robot *1pr2*))
+  (when span (setq *span* span))
+  (grab-tablecloth)
+  (grab-other)
+  (set-tablecloth)
+  ;; (move-mug-cup-to-table)
+  ;; (move-dish-to-table)
+  (1-dish-2-cup)
+  )
+
+(defun demo2 (&optional span)
+  (demo span :robot *2pr2*)
+  )
+
+(warn ";; (clean-table)~%")
+(warn ";; (set-tablecloth)~%")
+(warn ";; (fridge-demo)~%")
+(warn ";; (demo)~%")
+
+
+
+

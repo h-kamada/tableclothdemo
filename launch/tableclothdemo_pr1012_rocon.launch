@@ -1,0 +1,15 @@
+<launch>
+  <include file="$(find jsk_pr2_startup)/jsk_pr2_rocon/pr2s_rocon_common/pr1012_rocon.launch">
+    <arg name="config_path" value="$(find tableclothdemo)/config/tableclothdemo_pr1012_config.yaml" />
+  </include>
+  <!-- rocon communication -->
+  <node pkg="roseus" type="roseus" name="dummy_pub"
+        args="$(find tableclothdemo)/euslisp/grab-side-keep-pubbing.l" output="screen"/>
+  <node pkg="tableclothdemo" type="simple-bb-sub.py" name="bb_pub" />
+  <!-- for searching tablecloth -->
+  <node pkg="tableclothdemo" name="raw_boundingbox_to_margined_boundingbox"
+        type="raw_boundingbox_to_margined_boundingbox.py" />
+  <node pkg="tableclothdemo" name="boundingbox_to_transform_stamped"
+        type="boundingbox_to_transform_stamped.py" />
+  <node pkg="tableclothdemo" name="search_four_corners" type="search-four-corners.py" />
+</launch>

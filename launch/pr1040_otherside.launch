@@ -1,0 +1,6 @@
+<launch>
+  <include file="$(find tableclothdemo)/launch/common_rocon.launch">
+    <arg name="pr1012" value="false" />
+    <arg name="grabside" value="false" />
+  </include>
+</launch>
