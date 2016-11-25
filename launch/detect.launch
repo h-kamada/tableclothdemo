@@ -1,0 +1,4 @@
+<launch>
+  <include file="$(find tableclothdemo)/launch/cloth_detecter.launch" />
+  <include file="$(find tableclothdemo)/launch/detect_table.launch" />
+</launch>

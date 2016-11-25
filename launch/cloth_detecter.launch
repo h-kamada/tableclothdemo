@@ -8,7 +8,7 @@
   <arg name="input_image"
        value="/kinect_head_c2/rgb/image_rect_color" />
   <node name="tableclothmanager" pkg="nodelet" type="nodelet" args="manager" />
-  <node name="attention_clipper" pkg="nodelet" type="nodelet"
+  <node name="cloth_attention_clipper" pkg="nodelet" type="nodelet"
         args="load jsk_pcl/AttentionClipper tableclothmanager"
         output="screen">
     <remap from="~input" to="$(arg input_info)" />
@@ -19,7 +19,7 @@
   <node name="extract_indices" pkg="nodelet" type="nodelet"
         args="load jsk_pcl/ExtractIndices tableclothmanager">
     <remap from="~input" to="$(arg input_points)" />
-    <remap from="~indices" to="/attention_clipper/output/point_indices" />
+    <remap from="~indices" to="/cloth_attention_clipper/output/point_indices" />
   </node>
   <node name="resize_points_publisher" pkg="nodelet" type="nodelet"
         args="load jsk_pcl/ResizePointsPublisher tableclothmanager">

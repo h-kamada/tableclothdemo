@@ -16,7 +16,7 @@
         args="standalone jsk_pcl_utils/PointCloudXYZToXYZRGB table_manager">
     <remap from="~input" to="/cloud_filtered" />
   </node>
-  <node name="attention_clipper"
+  <node name="table_attention_clipper"
         pkg="nodelet" type="nodelet"
         args="standalone jsk_pcl/AttentionClipper table_manager">
     <remap from="~input/points" to="pointcloud_xyz_to_xyzrgb/output" />
@@ -29,7 +29,7 @@
         pkg="nodelet" type="nodelet"
         args="load jsk_pcl/ClusterPointIndicesDecomposer table_manager">
     <remap from="~input" to="/pointcloud_xyz_to_xyzrgb/output" />
-    <remap from="~target" to="/attention_clipper/output/cluster_point_indices" />
+    <remap from="~target" to="/table_attention_clipper/output/cluster_point_indices" />
   </node>
   <node name="pointcloud_to_laserscan" pkg="nodelet" type="nodelet"
         args="load pointcloud_to_laserscan/pointcloud_to_laserscan_nodelet table_manager">

@@ -42,5 +42,5 @@
   <node pkg="tableclothdemo" name="search_four_corners" type="search-four-corners.py" />
 
   <!-- for searching table -->
-  <include file="$(find tableclothdemo)/launch/detect_table.launch" />
+  <!-- <include file="$(find tableclothdemo)/launch/detect_table.launch" /> -->
 </launch>
